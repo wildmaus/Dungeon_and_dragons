@@ -1,13 +1,13 @@
 package Objects;
 
 import Audio.Audio;
+import Handler.Creator;
 import TileMap.*;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class Player extends MapObject {
 
@@ -25,6 +25,7 @@ public class Player extends MapObject {
     private boolean firing;
     private int fireCost;
     private int fireDamage;
+    private int restorationFire;
     private ArrayList<Fireball> fireballs;
 
     // scratch
@@ -37,7 +38,10 @@ public class Player extends MapObject {
 
     // animations
     private ArrayList<BufferedImage[]> sprites;
-    private final int[] numFrames = {2, 8, 1, 2, 4, 2, 5};
+    private int[] numFrames;
+    private int[] FrameWidths;
+    private int[] FrameHeights;
+    private int[] SpriteDelays;
 
     // animation action
     private static final int IDLE = 0;
@@ -48,67 +52,58 @@ public class Player extends MapObject {
     private static final int FIREBALL = 5;
     private static final int SCRATCHING = 6;
 
-    // SFX
-    private HashMap<String, Audio> sfx;
 
     public Player(TileMap tileMap) {
         super(tileMap);
 
-        width = 30;
-        height = 30;
-        cwidth = 20;
-        cheight = 20;
-        moveSpeed = 0.3;
-        maxSpeed = 1.6;
+        width = height = 30;
+        cwidth = Creator.cwidth;
+        cheight = Creator.cheight;
+        moveSpeed = Creator.moveSpeed;
+        maxSpeed = Creator.maxSpeed;
         stopSpeed = 0.4;
-        fallSpeed = 0.15;
-        maxFallSpeed = 4.0;
-        jumpStart = -4.8;
+        fallSpeed = Creator.fallSpeed;
+        maxFallSpeed = Creator.maxFallSpeed;
+        jumpStart = Creator.jumpStart;
         jumpStopSpeed = 0.3;
-        facingRight = true;
-        health = maxHealth = 5;
-        fire = maxFire = 2500;
-        fireCost = 200;
-        fireDamage = 5;
+        health = maxHealth = Creator.maxHealth;
+        fire = maxFire = Creator.maxNumberOfShells;
+        fireCost = Creator.shotPrice;
+        fireDamage = Creator.shotDamage;
+        restorationFire = Creator.restorationOfShells;
         fireballs = new ArrayList<Fireball>();
-        scratchDamage = 8;
-        scratchRange = 40;
+        scratchDamage = Creator.meleeDamage;
+        scratchRange = Creator.meleeRange;
+        numFrames = Creator.numFrames;
+        FrameWidths = Creator.frameWidths;
+        FrameHeights = Creator.frameHeights;
+        SpriteDelays = Creator.spriteDelays;
 
         // load sprites
         try {
-
-            BufferedImage spritesheet = ImageIO.read(getClass().getResourceAsStream("/Sprites/Player/playersprites.gif"));
+            int count = 0;
+            BufferedImage spritesheet = ImageIO.read(getClass().getResourceAsStream(Creator.playerAnimation));
             sprites = new ArrayList<BufferedImage[]>();
             for (int i = 0; i < 7; i++) {
 
                 BufferedImage[] bufferedImages = new BufferedImage[numFrames[i]];
                 for (int j = 0; j < numFrames[i]; j++) {
-
-                    if (i != 6) {
-                        bufferedImages[j] = spritesheet.getSubimage(j * width, i * height, width, height);
-                    } else {
-                        bufferedImages[j] = spritesheet.getSubimage(j * width * 2, i * height, width * 2, height);
-                    }
-
+                    bufferedImages[j] = spritesheet.getSubimage(j * FrameWidths[i], count, FrameWidths[i], FrameHeights[i]);
                 }
-
                 sprites.add(bufferedImages);
-
+                count += FrameHeights[i];
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        animation = new Animation();
-        currentAction = IDLE;
-        animation.setFrames(sprites.get(IDLE));
-        animation.setDelay(400);
+        setAnimation(IDLE);
 
-        sfx = new HashMap<String, Audio>();
-        sfx.put("jump", new Audio("/SFX/jump.mp3"));
-        sfx.put("scratch", new Audio("/SFX/scratch.mp3"));
-
+        Audio.load(Creator.sfxJump, "jump");
+        Audio.load(Creator.sfxMelee, "scratch");
+        Audio.load(Creator.sfxHit, "hit");
+        Audio.load(Creator.sfxShot, "fire");
     }
 
     public int getHealth() {
@@ -165,7 +160,7 @@ public class Player extends MapObject {
             for (int j = 0; j < fireballs.size(); j ++) {
                 if (fireballs.get(j).intersects(e)) {
                     e.hit(fireDamage);
-                    fireballs.get(i).setHit();
+                    fireballs.get(j).setHit();
                     break;
                 }
             }
@@ -182,6 +177,9 @@ public class Player extends MapObject {
     public void  hit(int damage) {
         if (flinching) return;
         health -= damage;
+        if (!dead) {
+            Audio.play("hit");
+        }
         if (health <= 0) {
             dead = true;
             deadTimer = System.nanoTime();
@@ -236,12 +234,24 @@ public class Player extends MapObject {
 
     }
 
+    public void setAnimation(int action) {
+        currentAction = action;
+        animation.setFrames(sprites.get(currentAction));
+        animation.setDelay(SpriteDelays[currentAction]);
+        width = FrameWidths[currentAction];
+        height = FrameHeights[currentAction];
+    }
+
     public void update() {
 
         // position
         getNextPosition();
         checkTileMapCollision();
         setPosition(xtemporary, ytemporary);
+        if (y >= tileMap.getHeight() - 14) {
+            dead = true;
+            deadTimer = System.nanoTime();
+        }
 
         // check attack has stopped
         if (currentAction == SCRATCHING) {
@@ -252,7 +262,7 @@ public class Player extends MapObject {
         }
 
         // fireballs
-        fire +=1;
+        fire += restorationFire;
         if (fire > maxFire) fire = maxFire;
         if (firing && currentAction != FIREBALL){
             if (fire > fireCost) {
@@ -281,55 +291,35 @@ public class Player extends MapObject {
         // set animation
         if (scratching) {
             if (currentAction != SCRATCHING) {
-                currentAction = SCRATCHING;
-                sfx.get("scratch").play();
-                animation.setFrames(sprites.get(SCRATCHING));
-                animation.setDelay(50);
-                width = 60;
+                Audio.play("scratch");
+                setAnimation(SCRATCHING);
             }
         } else if (firing) {
             if (currentAction != FIREBALL) {
-                currentAction = FIREBALL;
-                animation.setFrames(sprites.get(FIREBALL));
-                animation.setDelay(100);
-                width = 30;
+                Audio.play("fire");
+                setAnimation(FIREBALL);
             }
         } else if (dy > 0) {
             if (planning) {
                 if (currentAction != PLANNING) {
-                    currentAction = PLANNING;
-                    animation.setFrames(sprites.get(PLANNING));
-                    animation.setDelay(100);
-                    width = 30;
+                    setAnimation(PLANNING);
                 }
             } else if (falling) {
                 if (currentAction != FALLING) {
-                    currentAction = FALLING;
-                    animation.setFrames(sprites.get(FALLING));
-                    animation.setDelay(100);
-                    width = 30;
+                    setAnimation(FALLING);
                 }
             }
         } else if (dy < 0) {
             if (currentAction != JUMPING) {
-                currentAction = JUMPING;
-                sfx.get("jump").play();
-                animation.setFrames(sprites.get(JUMPING));
-                animation.setDelay(-1);
-                width = 30;
+                Audio.play("jump");
+                setAnimation(JUMPING);
             }
         } else if (left || right) {
             if (currentAction != WALKING) {
-                currentAction = WALKING;
-                animation.setFrames(sprites.get(WALKING));
-                animation.setDelay(40);
-                width = 30;
+                setAnimation(WALKING);
             }
         } else if (currentAction != IDLE) {
-            currentAction = IDLE;
-            animation.setFrames(sprites.get(IDLE));
-            animation.setDelay(400);
-            width = 30;
+            setAnimation(IDLE);
         }
         animation.update();
 

@@ -6,44 +6,51 @@ public class Animation {
 
     private BufferedImage[] frames;
     private int currentFrame;
-    private long startTime;
-    private long delay;
-    private boolean playedOnce;
+    private int numFrames;
+
+    private int count;
+    private int delay;
+
+    private int timesPlayed;
 
     public Animation() {
-        playedOnce = false;
+        timesPlayed = 0;
     }
 
     public void setFrames(BufferedImage[] frames) {
         this.frames = frames;
         currentFrame = 0;
-        startTime = System.nanoTime();
-        playedOnce = false;
+        count = 0;
+        timesPlayed = 0;
+        delay = 2;
+        numFrames = frames.length;
     }
 
-    public void setDelay(long delay) {
-        this.delay = delay;
-    }
-
-    public void setCurrentFrame(int frame) {
-        currentFrame = frame;
-    }
+    public void setDelay(int i) { delay = i; }
+    public void setFrame(int i) { currentFrame = i; }
+    public void setNumFrames(int i) { numFrames = i; }
 
     public void update() {
-        if (delay == -1) return;
-        long elapsed = (System.nanoTime() - startTime) / 1000000;
-        if (elapsed > delay) {
-            currentFrame ++;
-            startTime = System.nanoTime();
+
+        if(delay == -1) return;
+
+        count++;
+
+        if(count == delay) {
+            currentFrame++;
+            count = 0;
         }
-        if (currentFrame == frames.length) {
+        if(currentFrame == numFrames) {
             currentFrame = 0;
-            playedOnce = true;
+            timesPlayed++;
         }
+
     }
 
-    public int getCurrentFrameFrame() {return currentFrame;}
-    public BufferedImage getImage() {return frames[currentFrame];}
-    public boolean hasPlayedOnce() {return playedOnce;}
+    public int getFrame() { return currentFrame; }
+    public int getCount() { return count; }
+    public BufferedImage getImage() { return frames[currentFrame]; }
+    public boolean hasPlayedOnce() { return timesPlayed > 0; }
+    public boolean hasPlayed(int i) { return timesPlayed == i; }
 
 }

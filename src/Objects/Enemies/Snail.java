@@ -1,5 +1,7 @@
 package Objects.Enemies;
 
+import Handler.Creator;
+import Handler.Images;
 import Objects.Animation;
 import Objects.Enemy;
 import TileMap.TileMap;
@@ -15,39 +17,28 @@ public class Snail extends Enemy {
     public Snail(TileMap tileMap){
         super(tileMap);
 
-        moveSpeed = 0.3;
-        maxSpeed = 0.3;
-        width = 30;
-        height = 30;
-        cwidth = 20;
-        cheight = 20;
-        fallSpeed = 0.3;
-        maxFallSpeed = 5.0;
+        moveSpeed = Creator.exMoveSpeed;
+        maxSpeed = Creator.exMaxSpeed;
+        width = height = 30;
+        cwidth = Creator.exCwidth;
+        cheight = Creator.exCheight;
+        fallSpeed = Creator.exFallSpeed;
+        maxFallSpeed = Creator.exMaxFallSpeed;
 
-        health = maxHealth = 2;
-        contactDamage = 1;
+        health = maxHealth = Creator.exMaxHealth;
+        contactDamage = Creator.exContactDamage;
 
         // load sprites
-        try {
-            BufferedImage spritesheet = ImageIO.read(getClass().getResourceAsStream("/Sprites/Enemies/snail.gif"));
-            sprites = new BufferedImage[3];
-            for (int i = 0; i < sprites.length; i ++) {
-                sprites[i] = spritesheet.getSubimage(i * width, 0, width, height);
-            }
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
+        sprites = Images.snail[0];
 
-        animation = new Animation();
         animation.setFrames(sprites);
-        animation.setDelay(300);
+        animation.setDelay(Creator.exDelay);
 
         right = true;
-        facingRight = true;
+
     }
 
-    private void getNextPosition(){
+    private void getNextPosition() {
         // movement
         if (left) {
             dx -= moveSpeed;
@@ -75,14 +66,6 @@ public class Snail extends Enemy {
         checkTileMapCollision();
         setPosition(xtemporary, ytemporary);
 
-        // flinching
-        if (flinching) {
-            long elapsed = (System.nanoTime() - flinchTimer) / 1000000;
-            if (elapsed > 400) {
-                flinching = false;
-            }
-        }
-
         //turning
         if (right && dx == 0) {
             right = false;
@@ -94,6 +77,8 @@ public class Snail extends Enemy {
             left = false;
             facingRight = true;
         }
+        // flinching
+        super.update();
 
         // animation
         animation.update();
@@ -101,7 +86,6 @@ public class Snail extends Enemy {
     }
 
     public void draw(Graphics2D graphics2D) {
-        //if (notOnScrean()) return;
         setMapPosition();
         super.draw(graphics2D);
     }

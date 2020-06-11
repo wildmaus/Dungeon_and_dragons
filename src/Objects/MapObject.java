@@ -1,6 +1,5 @@
 package Objects;
 
-import Main.GamePanel;
 import TileMap.TileMap;
 import TileMap.Tile;
 
@@ -67,12 +66,20 @@ public abstract class MapObject {
     public MapObject(TileMap tileMap) {
         this.tileMap = tileMap;
         tileSize = tileMap.getTileSize();
+        animation = new Animation();
+        facingRight = true;
     }
 
     public boolean intersects(MapObject object) {
         Rectangle r1 = getRectangle();
         Rectangle r2 = object.getRectangle();
         return r1.intersects(r2);
+    }
+
+    public boolean contains(MapObject o) {
+        Rectangle r1 = getRectangle();
+        Rectangle r2 = o.getRectangle();
+        return r1.contains(r2);
     }
 
     public  Rectangle getRectangle() {
@@ -177,9 +184,6 @@ public abstract class MapObject {
     public void setDown(boolean b) {down = b;}
     public void setJumping(boolean b) {jumping = b;}
 
-    public boolean notOnScrean() {
-        return x + xmap + width < 0 || x + xmap - width > GamePanel.WIDTH || y + ymap + height < 0 || y + ymap - height > GamePanel.HEIGHT;
-    }
 
     public void draw(Graphics2D graphics2D) {
         if (facingRight) {

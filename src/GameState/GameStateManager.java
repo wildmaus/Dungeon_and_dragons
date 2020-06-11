@@ -1,5 +1,9 @@
 package GameState;
 
+import Audio.Audio;
+import Handler.Creator;
+import Main.GamePanel;
+
 import java.awt.*;
 
 public class GameStateManager {
@@ -7,10 +11,13 @@ public class GameStateManager {
     private GameState[] gameStates;
     private int currentState;
 
-    public static final int NUMOFSTATES = 2;
+    public static final int NUMOFSTATES = Creator.NumLevels + 1;
     public static final int MENUSTATE = 0;
     public static final int LEVEL1STATE = 1;
+
     public GameStateManager() {
+
+        Audio.init();
 
         gameStates = new GameState[NUMOFSTATES];
 
@@ -23,8 +30,10 @@ public class GameStateManager {
         if (state == MENUSTATE) {
             gameStates[state] = new MenuState(this);
         }
-        if (state == LEVEL1STATE) {
-            gameStates[state] = new Level1State(this);
+        else if (state < NUMOFSTATES) {
+            gameStates[state] = new Level1State(this, Creator.TileSet[state - 1], Creator.Map[state - 1],
+                    Creator.Bacground[state - 1], Creator.BgMusic[state - 1], Creator.Positions[state - 1],
+                    Creator.PositionsEx[state - 1], Creator.PositionnsEy[state - 1], Creator.EyAsplus[state - 1]);
         }
     }
 
@@ -34,32 +43,37 @@ public class GameStateManager {
 
     public void setState(int state) {
         unloadState(currentState);
-        currentState = state;
+        if (state == NUMOFSTATES) {
+            currentState = MENUSTATE;
+        }
+        else currentState = state;
         loadState(currentState);
     }
 
+    public int getState() { return currentState;}
+
     public  void update() {
-        try {
-        gameStates[currentState].update();
-        }
-        catch (Exception e) {
-        }
+        if(gameStates[currentState] != null) gameStates[currentState].update();
     }
 
 
     public void draw(Graphics2D graphics2D) {
-        try {
-            gameStates[currentState].draw(graphics2D);
-        }
-        catch (Exception e) {
+        if(gameStates[currentState] != null) gameStates[currentState].draw(graphics2D);
+        else {
+            graphics2D.setColor(java.awt.Color.BLACK);
+            graphics2D.fillRect(0, 0, GamePanel.WIDTH, GamePanel.HEIGHT);
         }
     }
 
     public void keyPressed(int key) {
-        gameStates[currentState].keyPressed(key);
+        if(gameStates[currentState] != null) {
+            gameStates[currentState].keyPressed(key);
+        }
     }
 
     public void keyReleased(int key) {
-        gameStates[currentState].keyReleased(key);
+        if(gameStates[currentState] != null) {
+            gameStates[currentState].keyReleased(key);
+        }
     }
 }

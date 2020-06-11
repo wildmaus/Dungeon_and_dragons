@@ -1,8 +1,9 @@
 package Objects;
 
+import Handler.Creator;
+import Handler.Images;
 import TileMap.TileMap;
 
-import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 
@@ -16,34 +17,19 @@ public class Fireball extends MapObject {
     public Fireball (TileMap tileMap, boolean right) {
 
         super(tileMap);
-        facingRight = right;
-        moveSpeed = 3.8;
+        moveSpeed = Creator.shellMoveSpeed;
         if (right) dx = moveSpeed;
         else dx = -moveSpeed;
 
-        width = 30;
-        height = 30;
-        cwidth = 14;
-        cheight = 14;
+        width = height = 30;
+        cwidth = Creator.shellCwidth;
+        cheight = Creator.shellcheight;
 
         // load sprites
-        try {
-            BufferedImage spritesheet = ImageIO.read(getClass().getResourceAsStream("/Sprites/Player/fireball.gif"));
-            sprites = new BufferedImage[4];
-            for (int i = 0; i < sprites.length; i ++) {
-                sprites[i] = spritesheet.getSubimage(i * width, 0, width, height);
-            }
-            hitSprites = new BufferedImage[3];
-            for (int i = 0; i < hitSprites.length; i ++) {
-                hitSprites[i] = spritesheet.getSubimage(i * width, height, width, height);
-            }
-            animation = new Animation();
-            animation.setFrames(sprites);
-            animation.setDelay(70);
-        }
-        catch (Exception e){
-            e.printStackTrace();
-        }
+        sprites = Images.fireballs[0];
+        hitSprites = Images.fireballs[1];
+        animation.setFrames(sprites);
+        animation.setDelay(Creator.shellDelay);
 
     }
 
@@ -51,7 +37,7 @@ public class Fireball extends MapObject {
         if (hit) return;
         hit = true;
         animation.setFrames(hitSprites);
-        animation.setDelay(70);
+        animation.setDelay(Creator.shellDelay);
         dx = 0;
     }
 

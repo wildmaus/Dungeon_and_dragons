@@ -5,8 +5,10 @@ import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 
 import Audio.Audio;
+import Handler.Creator;
 import Objects.*;
 import Objects.Enemies.Snail;
+import Objects.Enemies.Spider;
 import TileMap.*;
 import Main.GamePanel;
 
@@ -18,57 +20,75 @@ public class Level1State extends GameState {
     private ArrayList<Enemy> enemies;
     private ArrayList<Explosion> explosions;
     private HUD hud;
-    private Audio backgroundMusic;
+    private Teleport teleport;
 
-    public Level1State(GameStateManager gsm) {
+    public Level1State(GameStateManager gsm, String TileSet, String Map, String Bacground,
+                       String BgMusic, Point[] Positions, Point[] PositionsEx, Point[] PositionsEy, int[] EyAsplus) {
         this.gsm = gsm;
-        init();
+        init(TileSet,Map, Bacground, BgMusic, Positions, PositionsEx, PositionsEy, EyAsplus);
     }
 
-    public void init() {
+    public void init(String TileSet, String Map, String Bacground, String BgMusic, Point[] Positions,
+                     Point[] PositionsEx, Point[] PositionsEy, int[] EyAsplus) {
 
         tileMap = new TileMap(30);
-        tileMap.loadTiles("/Tilesets/grasstileset.gif");
-        tileMap.loadMap("/Maps/level1-1.map");
+        tileMap.loadTiles(TileSet);
+        tileMap.loadMap(Map);
         tileMap.setPosition(0, 0);
-        background = new Background("/Backgrounds/grassbg1.gif", 0.1);
+        background = new Background(Bacground, 0.1);
 
         player = new Player(tileMap);
-        player.setPosition(100, 100);
+        player.setPosition(Positions[0].x, Positions[0].y);
 
-        createEnemies();
+        teleport = new Teleport(tileMap);
+        teleport.setPosition(Positions[1].x, Positions[1].y);
+
+        createEnemies(PositionsEx, PositionsEy, EyAsplus);
 
         explosions = new ArrayList<Explosion>();
 
         hud = new HUD(player);
 
-        backgroundMusic = new Audio("/Music/level1-1.mp3");
-        backgroundMusic.play();
+        Audio.load(BgMusic, "bgmusic");
+        Audio.loop("bgmusic", 10, Audio.getFrames("bgmusic") - 10);
 
     }
 
-    private void createEnemies() {
+    private void createEnemies(Point[] PositionsEx, Point[] PositionsEy, int[] EyAsplus) {
+        Audio.load(Creator.sfxEnemyHit, "enemyhit");
+        Audio.load(Creator.explosionSound, "explode");
         enemies = new ArrayList<Enemy>();
         Snail snail;
-        Point[] points = new Point[] {
-                new Point(200, 200),
-                new Point(860, 200),
-                new Point(1525, 200),
-                new Point(1680, 200),
-                new Point(1800, 200),
-        };
-        for (int i = 0; i < points.length; i ++) {
+        Spider spider;
+        for (int i = 0; i < PositionsEx.length; i ++) {
             snail = new Snail(tileMap);
-            snail.setPosition(points[i].x, points[i].y);
+            snail.setPosition(PositionsEx[i].x, PositionsEx[i].y);
             enemies.add(snail);
         }
+        for (int i = 0; i < PositionsEy.length; i ++) {
+            spider = new Spider(tileMap, PositionsEy[i].y, EyAsplus[i]);
+            spider.setPosition(PositionsEy[i].x, PositionsEy[i].y);
+            enemies.add(spider);
+        }
+
+
+
     }
 
     public void update() {
 
+        // teleport
+        if (teleport.contains(player)) {
+            Audio.stop("bgmusic");
+            eventFinish();
+            return;
+        }
+
         // player
-        player.update();
-        tileMap.setPosition(GamePanel.WIDTH / 2 - player.getx(),GamePanel.HEIGHT / 2 - player.gety());
+        if (!player.isDead()) {
+            player.update();
+            tileMap.setPosition(GamePanel.WIDTH / 2 - player.getx(), GamePanel.HEIGHT / 2 - player.gety());
+        }
 
         // background
         background.setPosition(tileMap.getx(), tileMap.gety());
@@ -83,7 +103,7 @@ public class Level1State extends GameState {
             if (e.isDead()) {
                 enemies.remove(i);
                 i --;
-                explosions.add(new Explosion(e.getx(), e.gety()));
+                explosions.add(new Explosion(tileMap, e.getx(), e.gety()));
             }
         }
 
@@ -95,6 +115,9 @@ public class Level1State extends GameState {
                 i--;
             }
         }
+
+        // teleport
+        teleport.update();
     }
 
     public void draw(Graphics2D graphics2D) {
@@ -105,9 +128,8 @@ public class Level1State extends GameState {
             graphics2D.setFont(new Font("Times New Roman", Font.BOLD, 32));
             graphics2D.drawString("YOU DIED", 90, 90);
             long elapsed = (System.nanoTime() - player.getDeadTimer()) / 1000000;
-            backgroundMusic.stop();
             if (elapsed > 1000) {
-                gsm.setState(GameStateManager.MENUSTATE);
+                gsm.setState(0);
             }
             return;
         }
@@ -129,12 +151,15 @@ public class Level1State extends GameState {
 
         // explosions
         for (int i = 0; i < explosions.size(); i ++) {
-            explosions.get(i).setMapPosition(tileMap.getx(), tileMap.gety());
+            explosions.get(i).setMapPosition();
             explosions.get(i).draw(graphics2D);
         }
 
         // hud
         hud.draw(graphics2D);
+
+        // teleport
+        teleport.draw(graphics2D);
 
     }
     public void keyPressed(int key) {
@@ -154,5 +179,9 @@ public class Level1State extends GameState {
         if(key == KeyEvent.VK_DOWN) player.setDown(false);
         if(key == KeyEvent.VK_SPACE) player.setJumping(false);
         if(key == KeyEvent.VK_W) player.setPlanning(false);
+    }
+
+    private void eventFinish() {
+        gsm.setState(gsm.getState() + 1);
     }
 }
